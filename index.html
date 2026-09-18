@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskFlow - Firebase タスク管理</title>
+    <title>TaskFlow - スマートタスク管理</title>
 
-    <!-- Favicon (404エラー防止用のインラインSVGアイコン) -->
+    <!-- Favicon (404エラー防止インラインSVG) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☑️</text></svg>">
 
     <!-- Tailwind CSS CDN -->
@@ -30,7 +30,7 @@
             }
         }
     </script>
-    <!-- FontAwesome for Icons -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,7 +41,6 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -56,6 +55,12 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+        .task-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
@@ -63,47 +68,35 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Main App Header -->
+    <!-- App Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <!-- Logo & Title -->
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
                     <i class="fa-solid fa-check-double text-lg"></i>
                 </div>
                 <div>
                     <h1 class="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">TaskFlow</h1>
-                    <p class="text-xs text-slate-500 hidden sm:block">Firebase クラウド同期タスク</p>
+                    <p class="text-xs text-slate-500 hidden sm:block">ローカル自動保存タスク管理</p>
                 </div>
             </div>
 
-            <!-- User Status / Auth Controls -->
-            <div id="auth-controls" class="flex items-center gap-3">
-                <!-- Skeleton loader during initial auth check -->
-                <div id="auth-loading" class="flex items-center space-x-2 animate-pulse">
-                    <div class="w-8 h-8 bg-slate-200 rounded-full"></div>
-                    <div class="h-4 w-20 bg-slate-200 rounded"></div>
-                </div>
-
-                <!-- User Profile info (Hidden when logged out) -->
-                <div id="user-info" class="hidden items-center gap-3">
-                    <img id="user-avatar" class="w-9 h-9 rounded-full ring-2 ring-brand-500/30 object-cover" src="" alt="User avatar">
-                    <div class="flex flex-col">
-                        <span id="user-name" class="text-sm font-medium text-slate-700 hidden md:inline-block"></span>
-                        <span id="sync-status" class="text-[10px] text-emerald-600 font-semibold hidden md:inline-block"><i class="fa-solid fa-cloud mr-1"></i>クラウド同期</span>
-                    </div>
-                    <button id="logout-btn" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition border border-slate-200">
-                        <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> ログアウト
-                    </button>
-                </div>
-
-                <!-- Login Buttons (Hidden when logged in) -->
-                <div id="login-btn-group" class="hidden flex items-center gap-2">
-                    <button id="login-btn" class="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition shadow-sm hover:shadow active:scale-95">
-                        <i class="fa-brands fa-google text-red-400"></i>
-                        <span>Googleでログイン</span>
-                    </button>
-                </div>
+            <div class="flex items-center gap-2">
+                <!-- Backup & Restore Buttons -->
+                <button id="export-btn" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1.5" title="JSON形式で保存">
+                    <i class="fa-solid fa-download text-slate-500"></i>
+                    <span class="hidden sm:inline">書き出し</span>
+                </button>
+                <label id="import-label" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1.5 cursor-pointer" title="JSONファイルから復元">
+                    <i class="fa-solid fa-upload text-slate-500"></i>
+                    <span class="hidden sm:inline">読み込み</span>
+                    <input type="file" id="import-input" accept=".json" class="hidden">
+                </label>
+                <div class="h-4 w-px bg-slate-200 mx-1"></div>
+                <span class="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <i class="fa-solid fa-hard-drive"></i>
+                    <span>保存済み</span>
+                </span>
             </div>
         </div>
     </header>
@@ -111,33 +104,8 @@
     <!-- Main Content Area -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        <!-- Welcome / Landing Hero (Shown when logged out) -->
-        <div id="logged-out-hero" class="hidden flex-col items-center justify-center py-16 text-center max-w-2xl mx-auto">
-            <div class="w-20 h-20 bg-brand-50 rounded-3xl flex items-center justify-center text-brand-600 mb-6 shadow-inner">
-                <i class="fa-solid fa-list-check text-4xl"></i>
-            </div>
-            <h2 class="text-3xl font-extrabold text-slate-900 sm:text-4xl mb-4">
-                タスクをスマートに管理・同期
-            </h2>
-            <p class="text-slate-600 text-base sm:text-lg mb-8 leading-relaxed">
-                TaskFlow は Firebase と連携したマルチデバイス対応のタスク管理ツールです。Google アカウントでログインするだけで、どこからでもリアルタイムにアクセスできます。
-            </p>
-            <div class="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs sm:max-w-none">
-                <button id="hero-login-btn" class="inline-flex items-center justify-center gap-3 px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
-                    <i class="fa-brands fa-google text-lg"></i>
-                    <span>Googleでログイン</span>
-                </button>
-                <button id="hero-guest-btn" class="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-2xl transition-all">
-                    <i class="fa-solid fa-user-ghost text-slate-500"></i>
-                    <span>ゲストとして試す</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Dashboard & Task Management (Shown when logged in) -->
-        <div id="logged-in-app" class="hidden space-y-8">
-            
-            <!-- Stats Dashboard Section -->
+        <div class="space-y-8">
+            <!-- Stats Cards Section -->
             <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Total Tasks -->
                 <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
@@ -157,7 +125,7 @@
                         <h3 id="stat-active" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
                     </div>
                     <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                        <i class="fa-solid fa-spinner text-xl"></i>
+                        <i class="fa-solid fa-hourglass-half text-xl"></i>
                     </div>
                 </div>
 
@@ -195,13 +163,13 @@
                         <form id="add-task-form" class="space-y-4">
                             <div>
                                 <label for="task-title" class="block text-xs font-semibold text-slate-600 mb-1">タイトル <span class="text-red-500">*</span></label>
-                                <input type="text" id="task-title" required placeholder="例: 今週のレポート作成" 
+                                <input type="text" id="task-title" required placeholder="例: レポートの提出" 
                                     class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
                             </div>
 
                             <div>
                                 <label for="task-desc" class="block text-xs font-semibold text-slate-600 mb-1">詳細メモ (任意)</label>
-                                <textarea id="task-desc" rows="3" placeholder="詳細やメモを入力..." 
+                                <textarea id="task-desc" rows="3" placeholder="タスクに関する詳細メモ..." 
                                     class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition resize-none"></textarea>
                             </div>
 
@@ -221,6 +189,7 @@
                                         <option value="personal" selected>個人</option>
                                         <option value="study">学習</option>
                                         <option value="shopping">買い物</option>
+                                        <option value="health">健康・運動</option>
                                     </select>
                                 </div>
                             </div>
@@ -232,27 +201,27 @@
                             </div>
 
                             <button type="submit" id="submit-task-btn" 
-                                class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2">
+                                class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 active:scale-[0.99]">
                                 <i class="fa-solid fa-plus"></i> タスクを作成
                             </button>
                         </form>
                     </div>
                 </div>
 
-                <!-- Right Column: Task List & Controls -->
+                <!-- Right Column: Task List & Filter Toolbar -->
                 <div class="lg:col-span-2 space-y-4">
                     
                     <!-- Search & Filter Controls -->
                     <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
                         <div class="flex flex-col sm:flex-row gap-3">
-                            <!-- Search bar -->
+                            <!-- Search Bar -->
                             <div class="relative flex-1">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                                <input type="text" id="search-input" placeholder="タスクを検索..." 
+                                <input type="text" id="search-input" placeholder="タスク名やメモを検索..." 
                                     class="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
                             </div>
 
-                            <!-- Sort selector -->
+                            <!-- Sort Selector -->
                             <div class="w-full sm:w-48">
                                 <select id="sort-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
                                     <option value="created-desc">作成日時 (新しい順)</option>
@@ -263,31 +232,30 @@
                             </div>
                         </div>
 
-                        <!-- Filter Chips -->
-                        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs font-medium">
-                            <span class="text-slate-400 mr-1">状態:</span>
-                            <button class="filter-status-btn active px-3 py-1 rounded-lg bg-brand-50 text-brand-600 font-semibold border border-brand-200 transition" data-status="all">すべて</button>
-                            <button class="filter-status-btn px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="active">未完了</button>
-                            <button class="filter-status-btn px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="completed">完了済み</button>
+                        <!-- Status Filter Buttons -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs font-medium">
+                            <div class="flex items-center gap-1.5" id="filter-status-group">
+                                <span class="text-slate-400 mr-1">絞り込み:</span>
+                                <button class="filter-status-btn px-3 py-1 rounded-lg bg-brand-50 text-brand-600 font-semibold border border-brand-200 transition" data-status="all">すべて</button>
+                                <button class="filter-status-btn px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="active">未完了</button>
+                                <button class="filter-status-btn px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="completed">完了済み</button>
+                            </div>
+
+                            <button id="clear-completed-btn" class="text-slate-400 hover:text-rose-600 transition flex items-center gap-1">
+                                <i class="fa-regular fa-trash-can"></i>
+                                <span>完了済みを削除</span>
+                            </button>
                         </div>
                     </div>
 
                     <!-- Tasks Listing Container -->
                     <div id="tasks-container" class="space-y-3">
-                        <!-- Empty Loading State -->
-                        <div id="tasks-loading" class="py-12 text-center bg-white rounded-2xl border border-slate-200/80">
-                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent mb-2"></div>
-                            <p class="text-sm text-slate-500">タスクを読み込み中...</p>
-                        </div>
-
                         <!-- Empty Task List Placeholder -->
                         <div id="tasks-empty" class="hidden py-12 text-center bg-white rounded-2xl border border-slate-200/80 p-6">
                             <i class="fa-regular fa-clipboard text-4xl text-slate-300 mb-3"></i>
                             <h4 class="text-base font-semibold text-slate-700">タスクが見つかりません</h4>
-                            <p class="text-sm text-slate-500 mt-1">条件にマッチするタスクがないか、まだ作成されていません。</p>
+                            <p class="text-sm text-slate-500 mt-1">条件に合うタスクがないか、まだ作成されていません。</p>
                         </div>
-
-                        <!-- Task cards will be dynamically injected here -->
                     </div>
                 </div>
             </div>
@@ -315,7 +283,7 @@
 
                 <div>
                     <label for="edit-task-desc" class="block text-xs font-semibold text-slate-600 mb-1">詳細メモ (任意)</label>
-                    <textarea id="edit-task-desc" rows="3" placeholder="詳細やメモを入力..." 
+                    <textarea id="edit-task-desc" rows="3" placeholder="詳細メモ..." 
                         class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition resize-none"></textarea>
                 </div>
 
@@ -335,6 +303,7 @@
                             <option value="personal">個人</option>
                             <option value="study">学習</option>
                             <option value="shopping">買い物</option>
+                            <option value="health">健康・運動</option>
                         </select>
                     </div>
                 </div>
@@ -345,7 +314,7 @@
                         class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" id="cancel-edit-btn" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
                         キャンセル
                     </button>
@@ -357,154 +326,64 @@
         </div>
     </div>
 
-    <!-- Firebase Configuration Error Modal -->
-    <div id="auth-error-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100">
-            <div class="flex items-center gap-3 text-amber-600 mb-4">
-                <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                    <i class="fa-solid fa-gear text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-slate-900">Firebase認証の設定ガイド</h3>
-                    <p class="text-xs text-slate-500">Googleログインを使用するための設定手順</p>
-                </div>
-            </div>
-            
-            <div class="space-y-3 text-xs sm:text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200/80 mb-5 leading-relaxed">
-                <p class="font-semibold text-slate-800">Firebaseコンソールで以下の設定を行うとGoogleログインが有効化されます：</p>
-                <ol class="list-decimal list-inside space-y-1.5 pl-1">
-                    <li><a href="https://console.firebase.google.com/" target="_blank" class="text-brand-600 hover:underline font-medium">Firebase Console</a> にアクセス</li>
-                    <li>プロジェクト <code class="bg-slate-200 px-1 py-0.5 rounded text-slate-800">task-18d57</code> を選択</li>
-                    <li><b>Authentication</b> ＞ <b>Sign-in method</b> を開く</li>
-                    <li>プロバイダ <b>Google</b> と <b>匿名 (Anonymous)</b> を「有効にする」</li>
-                    <li>サポートメールを設定して <b>保存</b></li>
-                </ol>
-            </div>
+    <script>
+        // Application State & Storage Key
+        const STORAGE_KEY = 'taskflow_tasks_app_data';
 
-            <div class="flex flex-col sm:flex-row justify-end gap-2">
-                <button id="close-auth-modal-btn" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
-                    閉じる
-                </button>
-                <button id="guest-fallback-btn" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-sm transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-bolt"></i> ローカルモードですぐ使う (設定不要)
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase Script & App Logic -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { 
-            getAuth, 
-            GoogleAuthProvider, 
-            signInWithPopup, 
-            signInAnonymously,
-            signOut, 
-            onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            doc, 
-            addDoc, 
-            updateDoc, 
-            deleteDoc, 
-            onSnapshot, 
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-
-        // Provided Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyBMQFvHxDwL25Io09qAe67Ia3_dQkq9Hgk",
-            authDomain: "task-18d57.firebaseapp.com",
-            projectId: "task-18d57",
-            storageBucket: "task-18d57.firebasestorage.app",
-            messagingSenderId: "110320627681",
-            appId: "1:110320627681:web:67b5ec880821f217052ca0",
-            measurementId: "G-JKZYS85H54"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const googleProvider = new GoogleAuthProvider();
-
-        // Application State
-        let currentUser = null;
-        let unsubscribeTasks = null;
-        let allTasks = [];
+        let tasks = [];
         let currentFilterStatus = 'all';
         let searchQuery = '';
         let currentSort = 'created-desc';
-        let isLocalMode = false;
 
-        // Local Storage Helpers (Fallback when Firebase Auth is not configured)
-        const LOCAL_STORAGE_KEY = 'taskflow_local_tasks_store';
-
-        function loadLocalTasks() {
-            try {
-                const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-                return stored ? JSON.parse(stored) : [
-                    {
-                        id: 'demo-task-1',
-                        title: 'TaskFlowへようこそ！',
-                        description: 'タスクの追加、編集、削除、完了チェックを行えます。',
-                        priority: 'high',
-                        category: 'work',
-                        dueDate: new Date().toISOString().split('T')[0],
-                        completed: false,
-                        createdAt: { seconds: Math.floor(Date.now() / 1000) }
-                    }
-                ];
-            } catch (e) {
-                return [];
+        // Initial Sample Data (First time user)
+        const sampleTasks = [
+            {
+                id: 'task-sample-1',
+                title: 'TaskFlow へようこそ！',
+                description: '左側のフォームから新しいタスクを作成できます。チェックを入れて完了にしましょう。',
+                priority: 'high',
+                category: 'personal',
+                dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+                completed: false,
+                createdAt: Date.now() - 3600000
+            },
+            {
+                id: 'task-sample-2',
+                title: 'プロジェクト資料の整理',
+                description: '要件定義書とデザインデータのバックアップを取る',
+                priority: 'medium',
+                category: 'work',
+                dueDate: null,
+                completed: true,
+                createdAt: Date.now() - 7200000
             }
-        }
+        ];
 
-        function saveLocalTasks(tasks) {
+        // Load & Save Helpers
+        function loadTasks() {
             try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tasks));
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    tasks = JSON.parse(stored);
+                } else {
+                    tasks = [...sampleTasks];
+                    saveTasks();
+                }
             } catch (e) {
                 console.warn('LocalStorage error:', e);
+                tasks = [...sampleTasks];
             }
         }
 
-        function startLocalSession() {
-            isLocalMode = true;
-            currentUser = {
-                uid: 'local-user',
-                displayName: 'ゲスト (ローカル保存)',
-                photoURL: 'https://api.dicebear.com/7.x/bottts/svg?seed=local'
-            };
-
-            document.getElementById('auth-loading')?.classList.add('hidden');
-            document.getElementById('user-avatar').src = currentUser.photoURL;
-            document.getElementById('user-name').textContent = currentUser.displayName;
-            
-            const syncStatus = document.getElementById('sync-status');
-            if (syncStatus) {
-                syncStatus.innerHTML = '<i class="fa-solid fa-hard-drive mr-1"></i>ローカル保存';
-                syncStatus.className = 'text-[10px] text-amber-600 font-semibold hidden md:inline-block';
+        function saveTasks() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            } catch (e) {
+                console.error('Save failed:', e);
             }
-
-            document.getElementById('user-info').classList.remove('hidden');
-            document.getElementById('user-info').classList.add('flex');
-            document.getElementById('login-btn-group').classList.add('hidden');
-
-            document.getElementById('logged-out-hero').classList.add('hidden');
-            document.getElementById('logged-out-hero').classList.remove('flex');
-            document.getElementById('logged-in-app').classList.remove('hidden');
-
-            allTasks = loadLocalTasks();
-            document.getElementById('tasks-loading')?.classList.add('hidden');
-            renderTasks();
-            updateStats();
-            showToast('ローカルモードで準備完了しました', 'info');
         }
 
-        // Toast message display
+        // Toast Messages
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             if (!container) return;
@@ -537,7 +416,7 @@
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            }, 3000);
         }
 
         function escapeHtml(str) {
@@ -551,312 +430,75 @@
             }[match]));
         }
 
-        // Auth Error Modal Helpers
-        function showAuthErrorModal() {
-            document.getElementById('auth-error-modal')?.classList.remove('hidden');
-        }
+        // Render Tasks to UI
+        function renderTasks() {
+            const container = document.getElementById('tasks-container');
+            const emptyState = document.getElementById('tasks-empty');
+            if (!container) return;
 
-        function hideAuthErrorModal() {
-            document.getElementById('auth-error-modal')?.classList.add('hidden');
-        }
+            // Filter logic
+            let filtered = tasks.filter(task => {
+                if (currentFilterStatus === 'active' && task.completed) return false;
+                if (currentFilterStatus === 'completed' && !task.completed) return false;
 
-        document.getElementById('close-auth-modal-btn')?.addEventListener('click', hideAuthErrorModal);
-        document.getElementById('guest-fallback-btn')?.addEventListener('click', () => {
-            hideAuthErrorModal();
-            startLocalSession();
-        });
-
-        // Auth State Listener
-        onAuthStateChanged(auth, (user) => {
-            if (isLocalMode) return;
-
-            const authLoading = document.getElementById('auth-loading');
-            const userInfo = document.getElementById('user-info');
-            const loginBtnGroup = document.getElementById('login-btn-group');
-            const loggedOutHero = document.getElementById('logged-out-hero');
-            const loggedInApp = document.getElementById('logged-in-app');
-
-            authLoading?.classList.add('hidden');
-
-            if (user) {
-                currentUser = user;
-                const isAnonymous = user.isAnonymous;
-                const avatarUrl = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
-                const displayName = user.displayName || (isAnonymous ? 'ゲストユーザー' : 'ユーザー');
-
-                document.getElementById('user-avatar').src = avatarUrl;
-                document.getElementById('user-name').textContent = displayName;
-                
-                const syncStatus = document.getElementById('sync-status');
-                if (syncStatus) {
-                    syncStatus.innerHTML = '<i class="fa-solid fa-cloud mr-1"></i>クラウド同期';
-                    syncStatus.className = 'text-[10px] text-emerald-600 font-semibold hidden md:inline-block';
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const matchTitle = task.title.toLowerCase().includes(q);
+                    const matchDesc = task.description ? task.description.toLowerCase().includes(q) : false;
+                    if (!matchTitle && !matchDesc) return false;
                 }
-
-                userInfo.classList.remove('hidden');
-                userInfo.classList.add('flex');
-                loginBtnGroup.classList.add('hidden');
-
-                loggedOutHero.classList.add('hidden');
-                loggedOutHero.classList.remove('flex');
-                loggedInApp.classList.remove('hidden');
-
-                attachTasksListener(user.uid);
-            } else {
-                currentUser = null;
-                if (unsubscribeTasks) unsubscribeTasks();
-
-                userInfo.classList.add('hidden');
-                userInfo.classList.remove('flex');
-                loginBtnGroup.classList.remove('hidden');
-
-                loggedOutHero.classList.remove('hidden');
-                loggedOutHero.classList.add('flex');
-                loggedInApp.classList.add('hidden');
-
-                allTasks = [];
-            }
-        });
-
-        // Auth Action Handlers
-        async function handleLogin() {
-            try {
-                await signInWithPopup(auth, googleProvider);
-                showToast('Googleでログインしました', 'success');
-            } catch (error) {
-                console.warn("Login Error handled:", error.code || error.message);
-                showAuthErrorModal();
-            }
-        }
-
-        async function handleGuestLogin() {
-            try {
-                await signInAnonymously(auth);
-                showToast('ゲストとしてログインしました', 'success');
-            } catch (error) {
-                console.warn("Guest Login Error handled, falling back to local mode:", error.code || error.message);
-                startLocalSession();
-            }
-        }
-
-        async function handleLogout() {
-            try {
-                if (isLocalMode) {
-                    isLocalMode = false;
-                    currentUser = null;
-                    document.getElementById('user-info').classList.add('hidden');
-                    document.getElementById('login-btn-group').classList.remove('hidden');
-                    document.getElementById('logged-out-hero').classList.remove('hidden');
-                    document.getElementById('logged-out-hero').classList.add('flex');
-                    document.getElementById('logged-in-app').classList.add('hidden');
-                    showToast('ログアウトしました', 'info');
-                    return;
-                }
-                await signOut(auth);
-                showToast('ログアウトしました', 'info');
-            } catch (error) {
-                console.error("Logout Error:", error);
-                showToast('ログアウトに失敗しました', 'error');
-            }
-        }
-
-        document.getElementById('login-btn')?.addEventListener('click', handleLogin);
-        document.getElementById('hero-login-btn')?.addEventListener('click', handleLogin);
-        document.getElementById('hero-guest-btn')?.addEventListener('click', handleGuestLogin);
-        document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
-
-        // Attach Firestore Realtime Task Listener
-        function attachTasksListener(userId) {
-            const tasksLoading = document.getElementById('tasks-loading');
-            tasksLoading?.classList.remove('hidden');
-
-            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
-            const tasksCollection = collection(db, 'artifacts', appId, 'users', userId, 'tasks');
-
-            unsubscribeTasks = onSnapshot(tasksCollection, (snapshot) => {
-                allTasks = [];
-                snapshot.forEach((docSnap) => {
-                    allTasks.push({
-                        id: docSnap.id,
-                        ...docSnap.data()
-                    });
-                });
-
-                tasksLoading?.classList.add('hidden');
-                renderTasks();
-                updateStats();
-            }, (error) => {
-                console.warn("Firestore Listen Error, falling back to local storage:", error);
-                startLocalSession();
+                return true;
             });
-        }
 
-        // Create Task
-        document.getElementById('add-task-form')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!currentUser) return;
-
-            const titleInput = document.getElementById('task-title');
-            const descInput = document.getElementById('task-desc');
-            const priorityInput = document.getElementById('task-priority');
-            const categoryInput = document.getElementById('task-category');
-            const dueDateInput = document.getElementById('task-duedate');
-            const submitBtn = document.getElementById('submit-task-btn');
-
-            const title = titleInput.value.trim();
-            if (!title) return;
-
-            submitBtn.disabled = true;
-            submitBtn.classList.add('opacity-60');
-
-            try {
-                const newTask = {
-                    title: title,
-                    description: descInput.value.trim(),
-                    priority: priorityInput.value,
-                    category: categoryInput.value,
-                    dueDate: dueDateInput.value || null,
-                    completed: false,
-                    createdAt: { seconds: Math.floor(Date.now() / 1000) }
-                };
-
-                if (isLocalMode) {
-                    newTask.id = 'local-' + Date.now();
-                    allTasks.unshift(newTask);
-                    saveLocalTasks(allTasks);
-                    renderTasks();
-                    updateStats();
-                } else {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
-                    const tasksCollection = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks');
-                    await addDoc(tasksCollection, {
-                        ...newTask,
-                        createdAt: serverTimestamp()
-                    });
+            // Sort logic
+            filtered.sort((a, b) => {
+                if (currentSort === 'created-desc') return b.createdAt - a.createdAt;
+                if (currentSort === 'created-asc') return a.createdAt - b.createdAt;
+                if (currentSort === 'duedate-asc') {
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
                 }
-
-                // Reset Form
-                titleInput.value = '';
-                descInput.value = '';
-                priorityInput.value = 'medium';
-                categoryInput.value = 'personal';
-                dueDateInput.value = '';
-
-                showToast('タスクを追加しました', 'success');
-            } catch (error) {
-                console.error("Add Task Error:", error);
-                showToast('タスクの作成に失敗しました', 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-60');
-            }
-        });
-
-        // Toggle Task Completion
-        window.toggleTaskComplete = async function(taskId, currentStatus) {
-            if (!currentUser) return;
-
-            try {
-                if (isLocalMode) {
-                    const task = allTasks.find(t => t.id === taskId);
-                    if (task) {
-                        task.completed = !currentStatus;
-                        saveLocalTasks(allTasks);
-                        renderTasks();
-                        updateStats();
-                    }
-                } else {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
-                    const taskRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks', taskId);
-                    await updateDoc(taskRef, { completed: !currentStatus });
+                if (currentSort === 'priority-desc') {
+                    const weight = { high: 3, medium: 2, low: 1 };
+                    return (weight[b.priority] || 0) - (weight[a.priority] || 0);
                 }
+                return 0;
+            });
 
-                showToast(!currentStatus ? 'タスクを完了にしました' : 'タスクを未完了に戻しました', 'info');
-            } catch (error) {
-                console.error("Toggle Complete Error:", error);
-                showToast('状態の更新に失敗しました', 'error');
+            // Render Task Cards
+            container.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState?.classList.remove('hidden');
+            } else {
+                emptyState?.classList.add('hidden');
             }
-        };
 
-        // Delete Task
-        window.deleteTask = async function(taskId) {
-            if (!currentUser) return;
-
-            try {
-                if (isLocalMode) {
-                    allTasks = allTasks.filter(t => t.id !== taskId);
-                    saveLocalTasks(allTasks);
-                    renderTasks();
-                    updateStats();
-                } else {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
-                    const taskRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks', taskId);
-                    await deleteDoc(taskRef);
-                }
-                showToast('タスクを削除しました', 'info');
-            } catch (error) {
-                console.error("Delete Task Error:", error);
-                showToast('削除に失敗しました', 'error');
-            }
-        };
-
-        // Save Task Edits
-        document.getElementById('edit-task-form')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!currentUser) return;
-
-            const taskId = document.getElementById('edit-task-id').value;
-            const title = document.getElementById('edit-task-title').value.trim();
-            const description = document.getElementById('edit-task-desc').value.trim();
-            const priority = document.getElementById('edit-task-priority').value;
-            const category = document.getElementById('edit-task-category').value;
-            const dueDate = document.getElementById('edit-task-duedate').value || null;
-
-            if (!title) return;
-
-            try {
-                if (isLocalMode) {
-                    const task = allTasks.find(t => t.id === taskId);
-                    if (task) {
-                        task.title = title;
-                        task.description = description;
-                        task.priority = priority;
-                        task.category = category;
-                        task.dueDate = dueDate;
-                        saveLocalTasks(allTasks);
-                        renderTasks();
-                        updateStats();
-                    }
-                } else {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
-                    const taskRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks', taskId);
-                    await updateDoc(taskRef, { title, description, priority, category, dueDate });
-                }
-
-                closeEditModal();
-                showToast('タスクを更新しました', 'success');
-            } catch (error) {
-                console.error("Update Task Error:", error);
-                showToast('更新に失敗しました', 'error');
-            }
-        });
-
-        // Remaining rendering & filter helpers remain existing
-                personal: '<i class="fa-solid fa-user text-purple-500 mr-1"></i> 個人',
-                study: '<i class="fa-solid fa-graduation-cap text-emerald-500 mr-1"></i> 学習',
-                shopping: '<i class="fa-solid fa-cart-shopping text-amber-500 mr-1"></i> 買い物'
+            const priorityBadges = {
+                high: '<span class="px-2 py-0.5 text-[11px] font-semibold bg-rose-50 text-rose-600 rounded-md border border-rose-200/60">高 (High)</span>',
+                medium: '<span class="px-2 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-600 rounded-md border border-amber-200/60">中 (Medium)</span>',
+                low: '<span class="px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 rounded-md border border-slate-200/60">低 (Low)</span>'
             };
 
-            filteredTasks.forEach(task => {
+            const categoryLabels = {
+                work: '<i class="fa-solid fa-briefcase text-blue-500 mr-1"></i> 仕事',
+                personal: '<i class="fa-solid fa-user text-purple-500 mr-1"></i> 個人',
+                study: '<i class="fa-solid fa-graduation-cap text-emerald-500 mr-1"></i> 学習',
+                shopping: '<i class="fa-solid fa-cart-shopping text-amber-500 mr-1"></i> 買い物',
+                health: '<i class="fa-solid fa-heart text-rose-500 mr-1"></i> 健康・運動'
+            };
+
+            filtered.forEach(task => {
                 const card = document.createElement('div');
-                card.className = `task-card bg-white p-4 sm:p-5 rounded-2xl border ${task.completed ? 'border-slate-200 bg-slate-50/50' : 'border-slate-200/80 shadow-sm'} flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-200 hover:border-slate-300`;
+                card.className = `task-card bg-white p-4 sm:p-5 rounded-2xl border ${task.completed ? 'border-slate-200 bg-slate-50/60' : 'border-slate-200/80 shadow-sm'} flex flex-col sm:flex-row sm:items-center justify-between gap-4`;
 
                 const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date().setHours(0,0,0,0);
 
                 card.innerHTML = `
                     <div class="flex items-start gap-3.5 flex-1 min-w-0">
                         <!-- Checkbox -->
-                        <button onclick="toggleTaskComplete('${task.id}', ${task.completed})" 
+                        <button onclick="toggleTaskComplete('${task.id}')" 
                             class="mt-0.5 flex-shrink-0 w-6 h-6 rounded-lg border-2 ${task.completed ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 text-transparent hover:border-brand-500'} flex items-center justify-center transition">
                             <i class="fa-solid fa-check text-xs"></i>
                         </button>
@@ -870,7 +512,7 @@
                             </div>
 
                             ${task.description ? `
-                                <p class="text-xs text-slate-500 ${task.completed ? 'line-through text-slate-400' : ''} line-clamp-2">
+                                <p class="text-xs text-slate-500 ${task.completed ? 'line-through text-slate-300' : ''} line-clamp-2">
                                     ${escapeHtml(task.description)}
                                 </p>
                             ` : ''}
@@ -890,8 +532,8 @@
                         </div>
                     </div>
 
-                    <!-- Actions -->
-                    <div class="flex items-center gap-2 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 w-full sm:w-auto justify-end">
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-1 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 w-full sm:w-auto justify-end">
                         <button onclick="openEditModal('${task.id}')" class="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition" title="編集">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
@@ -903,12 +545,14 @@
 
                 container.appendChild(card);
             });
+
+            updateStats();
         }
 
-        // Update Stats Counters & Progress
+        // Update Stats Counters
         function updateStats() {
-            const total = allTasks.length;
-            const completed = allTasks.filter(t => t.completed).length;
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
             const active = total - completed;
             const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -918,6 +562,179 @@
             document.getElementById('stat-rate-text').textContent = `${rate}%`;
             document.getElementById('stat-rate-bar').style.width = `${rate}%`;
         }
+
+        // Add Task Form Handler
+        document.getElementById('add-task-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const titleInput = document.getElementById('task-title');
+            const descInput = document.getElementById('task-desc');
+            const priorityInput = document.getElementById('task-priority');
+            const categoryInput = document.getElementById('task-category');
+            const dueDateInput = document.getElementById('task-duedate');
+
+            const title = titleInput.value.trim();
+            if (!title) return;
+
+            const newTask = {
+                id: 'task-' + Date.now(),
+                title: title,
+                description: descInput.value.trim(),
+                priority: priorityInput.value,
+                category: categoryInput.value,
+                dueDate: dueDateInput.value || null,
+                completed: false,
+                createdAt: Date.now()
+            };
+
+            tasks.unshift(newTask);
+            saveTasks();
+            renderTasks();
+
+            titleInput.value = '';
+            descInput.value = '';
+            priorityInput.value = 'medium';
+            categoryInput.value = 'personal';
+            dueDateInput.value = '';
+
+            showToast('タスクを作成しました', 'success');
+        });
+
+        // Toggle Task Completion
+        window.toggleTaskComplete = function(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                saveTasks();
+                renderTasks();
+                showToast(task.completed ? 'タスクを完了しました' : 'タスクを未完了に戻しました', 'info');
+            }
+        };
+
+        // Delete Task
+        window.deleteTask = function(taskId) {
+            tasks = tasks.filter(t => t.id !== taskId);
+            saveTasks();
+            renderTasks();
+            showToast('タスクを削除しました', 'info');
+        };
+
+        // Clear Completed Tasks
+        document.getElementById('clear-completed-btn')?.addEventListener('click', () => {
+            const completedCount = tasks.filter(t => t.completed).length;
+            if (completedCount === 0) {
+                showToast('完了済みのタスクはありません', 'info');
+                return;
+            }
+            tasks = tasks.filter(t => !t.completed);
+            saveTasks();
+            renderTasks();
+            showToast(`${completedCount} 件の完了済みタスクを削除しました`, 'success');
+        });
+
+        // Edit Modal Controls
+        window.openEditModal = function(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('edit-task-id').value = task.id;
+            document.getElementById('edit-task-title').value = task.title;
+            document.getElementById('edit-task-desc').value = task.description || '';
+            document.getElementById('edit-task-priority').value = task.priority;
+            document.getElementById('edit-task-category').value = task.category;
+            document.getElementById('edit-task-duedate').value = task.dueDate || '';
+
+            document.getElementById('edit-modal')?.classList.remove('hidden');
+        };
+
+        function closeEditModal() {
+            document.getElementById('edit-modal')?.classList.add('hidden');
+        }
+
+        document.getElementById('close-modal-btn')?.addEventListener('click', closeEditModal);
+        document.getElementById('cancel-edit-btn')?.addEventListener('click', closeEditModal);
+
+        document.getElementById('edit-task-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const taskId = document.getElementById('edit-task-id').value;
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            task.title = document.getElementById('edit-task-title').value.trim();
+            task.description = document.getElementById('edit-task-desc').value.trim();
+            task.priority = document.getElementById('edit-task-priority').value;
+            task.category = document.getElementById('edit-task-category').value;
+            task.dueDate = document.getElementById('edit-task-duedate').value || null;
+
+            saveTasks();
+            renderTasks();
+            closeEditModal();
+            showToast('タスクを更新しました', 'success');
+        });
+
+        // Search, Filter, and Sort Listeners
+        document.getElementById('search-input')?.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim();
+            renderTasks();
+        });
+
+        document.getElementById('sort-select')?.addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            renderTasks();
+        });
+
+        document.querySelectorAll('.filter-status-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-status-btn').forEach(b => {
+                    b.className = 'filter-status-btn px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+                });
+                btn.className = 'filter-status-btn px-3 py-1 rounded-lg bg-brand-50 text-brand-600 font-semibold border border-brand-200 transition';
+                currentFilterStatus = btn.dataset.status;
+                renderTasks();
+            });
+        });
+
+        // Export JSON Data
+        document.getElementById('export-btn')?.addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `taskflow_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('データをファイルに書き出しました', 'success');
+        });
+
+        // Import JSON Data
+        document.getElementById('import-input')?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    if (Array.isArray(imported)) {
+                        tasks = imported;
+                        saveTasks();
+                        renderTasks();
+                        showToast('データを正常に読み込みました', 'success');
+                    } else {
+                        showToast('無効なファイル形式です', 'error');
+                    }
+                } catch (err) {
+                    showToast('ファイルの読み込みに失敗しました', 'error');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Initialize App on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+            renderTasks();
+        });
     </script>
 </body>
 </html>
