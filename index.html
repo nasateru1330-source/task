@@ -1,416 +1,366 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>青空マルシェ直売所 - お客さまの声＆タスク管理</title>
+    <title>TaskFlow - Firebase タスク管理</title>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
-
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
                     colors: {
                         brand: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            800: '#166534',
-                        },
-                        accent: {
-                            500: '#f59e0b',
-                            600: '#d97706',
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
                         }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'Zen Maru Gothic', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
         body {
-            font-family: 'Zen Maru Gothic', 'Inter', sans-serif;
-            background-color: #f8fafc;
+            font-family: 'Inter', sans-serif;
         }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-        }
-        .custom-scrollbar::-webkit-scrollbar {
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
             width: 6px;
+            height: 6px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 9999px;
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
 </head>
-<body class="min-h-screen text-slate-800 flex flex-col">
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
 
-    <!-- Header -->
-    <header class="bg-brand-700 text-white shadow-md sticky top-0 z-40">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main App Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo & Title -->
             <div class="flex items-center space-x-3">
-                <div class="bg-white p-2 rounded-full text-brand-700 w-10 h-10 flex items-center justify-center font-bold text-xl shadow">
-                    <i class="fa-solid fa-store"></i>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i class="fa-solid fa-check-double text-lg"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg sm:text-xl font-bold tracking-wide">青空マルシェ直売所</h1>
-                    <p class="text-xs text-brand-100 hidden sm:block">新鮮野菜とみんなで作るコミュニティ</p>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">TaskFlow</h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Firebase クラウド同期タスク</p>
                 </div>
             </div>
 
-            <!-- Auth Status & Controls -->
-            <div class="flex items-center space-x-3">
-                <div id="userInfo" class="hidden flex items-center space-x-2 bg-brand-800 px-3 py-1.5 rounded-full text-xs sm:text-sm">
-                    <img id="userAvatar" src="" class="w-6 h-6 rounded-full border border-white" alt="User Avatar">
-                    <span id="userName" class="max-w-[100px] sm:max-w-[150px] truncate font-medium">ユーザー</span>
+            <!-- User Status / Auth Controls -->
+            <div id="auth-controls" class="flex items-center gap-3">
+                <!-- Skeleton loader during initial auth check -->
+                <div id="auth-loading" class="flex items-center space-x-2 animate-pulse">
+                    <div class="w-8 h-8 bg-slate-200 rounded-full"></div>
+                    <div class="h-4 w-20 bg-slate-200 rounded"></div>
                 </div>
 
-                <button id="authBtn" class="bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm shadow transition duration-200 flex items-center space-x-2">
-                    <i class="fa-brands fa-google"></i>
-                    <span id="authBtnText">ログイン</span>
+                <!-- User Profile info (Hidden when logged out) -->
+                <div id="user-info" class="hidden items-center gap-3">
+                    <img id="user-avatar" class="w-9 h-9 rounded-full ring-2 ring-brand-500/30 object-cover" src="" alt="User avatar">
+                    <span id="user-name" class="text-sm font-medium text-slate-700 hidden md:inline-block"></span>
+                    <button id="logout-btn" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition border border-slate-200">
+                        <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> ログアウト
+                    </button>
+                </div>
+
+                <!-- Login Button (Hidden when logged in) -->
+                <button id="login-btn" class="hidden items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition shadow-sm hover:shadow active:scale-95">
+                    <i class="fa-brands fa-google text-red-400"></i>
+                    <span>Googleでログイン</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Navigation Tabs -->
-    <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-16 z-30">
-        <div class="max-w-7xl mx-auto px-4 flex justify-around sm:justify-start sm:space-x-8">
-            <button onclick="switchTab('feedbacks')" id="tab-feedbacks" class="tab-btn active border-b-4 border-brand-600 text-brand-700 font-bold py-3 px-2 sm:px-4 text-sm sm:text-base flex items-center space-x-2">
-                <i class="fa-solid fa-comments"></i>
-                <span>お客さまの声・リクエスト</span>
-            </button>
-            <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn border-b-4 border-transparent text-slate-500 hover:text-brand-600 font-bold py-3 px-2 sm:px-4 text-sm sm:text-base flex items-center space-x-2">
-                <i class="fa-solid fa-list-check"></i>
-                <span>スタッフ タスク管理</span>
-                <span id="pendingTaskBadge" class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-sans hidden">0</span>
-            </button>
-            <button onclick="switchTab('about')" id="tab-about" class="tab-btn border-b-4 border-transparent text-slate-500 hover:text-brand-600 font-bold py-3 px-2 sm:px-4 text-sm sm:text-base flex items-center space-x-2">
-                <i class="fa-solid fa-circle-info"></i>
-                <span>直売所案内</span>
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Welcome / Landing Hero (Shown when logged out) -->
+        <div id="logged-out-hero" class="hidden flex-col items-center justify-center py-16 text-center max-w-2xl mx-auto">
+            <div class="w-20 h-20 bg-brand-50 rounded-3xl flex items-center justify-center text-brand-600 mb-6 shadow-inner">
+                <i class="fa-solid fa-list-check text-4xl"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold text-slate-900 sm:text-4xl mb-4">
+                タスクをスマートに管理・同期
+            </h2>
+            <p class="text-slate-600 text-base sm:text-lg mb-8 leading-relaxed">
+                TaskFlow は Firebase と連携したマルチデバイス対応のタスク管理ツールです。Google アカウントでログインするだけで、どこからでもリアルタイムにアクセスできます。
+            </p>
+            <button id="hero-login-btn" class="inline-flex items-center gap-3 px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                <i class="fa-brands fa-google text-lg"></i>
+                <span>Googleで今すぐ始める</span>
             </button>
         </div>
-    </nav>
 
-    <!-- Main Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Dashboard & Task Management (Shown when logged in) -->
+        <div id="logged-in-app" class="hidden space-y-8">
+            
+            <!-- Stats Dashboard Section -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Total Tasks -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">総タスク数</p>
+                        <h3 id="stat-total" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i class="fa-solid fa-layer-group text-xl"></i>
+                    </div>
+                </div>
 
-        <!-- Notification Toast -->
-        <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 max-w-md pointer-events-none">
-            <i id="toastIcon" class="fa-solid fa-circle-info text-emerald-400 text-lg"></i>
-            <span id="toastMsg" class="text-sm font-medium">通知メッセージ</span>
+                <!-- Active Tasks -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">未完了タスク</p>
+                        <h3 id="stat-active" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <i class="fa-solid fa-spinner text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Completed Tasks -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">完了済み</p>
+                        <h3 id="stat-completed" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-solid fa-circle-check text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Progress Bar Card -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-center">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">達成率</p>
+                        <span id="stat-rate-text" class="text-xs font-bold text-brand-600">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                        <div id="stat-rate-bar" class="bg-gradient-to-r from-brand-500 to-indigo-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Left Column: Create Task Form -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm sticky top-24">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-plus-circle text-brand-600"></i> 新しいタスクを追加
+                        </h3>
+                        <form id="add-task-form" class="space-y-4">
+                            <div>
+                                <label for="task-title" class="block text-xs font-semibold text-slate-600 mb-1">タイトル <span class="text-red-500">*</span></label>
+                                <input type="text" id="task-title" required placeholder="例: 今週のレポート作成" 
+                                    class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label for="task-desc" class="block text-xs font-semibold text-slate-600 mb-1">詳細メモ (任意)</label>
+                                <textarea id="task-desc" rows="3" placeholder="詳細やメモを入力..." 
+                                    class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition resize-none"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="task-priority" class="block text-xs font-semibold text-slate-600 mb-1">優先度</label>
+                                    <select id="task-priority" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                                        <option value="low">低 (Low)</option>
+                                        <option value="medium" selected>中 (Medium)</option>
+                                        <option value="high">高 (High)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="task-category" class="block text-xs font-semibold text-slate-600 mb-1">カテゴリ</label>
+                                    <select id="task-category" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                                        <option value="work">仕事</option>
+                                        <option value="personal" selected>個人</option>
+                                        <option value="study">学習</option>
+                                        <option value="shopping">買い物</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="task-duedate" class="block text-xs font-semibold text-slate-600 mb-1">期限日</label>
+                                <input type="date" id="task-duedate" 
+                                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                            </div>
+
+                            <button type="submit" id="submit-task-btn" 
+                                class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-plus"></i> タスクを作成
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right Column: Task List & Controls -->
+                <div class="lg:col-span-2 space-y-4">
+                    
+                    <!-- Search & Filter Controls -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <!-- Search bar -->
+                            <div class="relative flex-1">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                <input type="text" id="search-input" placeholder="タスクを検索..." 
+                                    class="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                            </div>
+
+                            <!-- Sort selector -->
+                            <div class="w-full sm:w-48">
+                                <select id="sort-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                                    <option value="created-desc">作成日時 (新しい順)</option>
+                                    <option value="created-asc">作成日時 (古い順)</option>
+                                    <option value="duedate-asc">期限日 (近い順)</option>
+                                    <option value="priority-desc">優先度 (高い順)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Filter Chips -->
+                        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs font-medium">
+                            <span class="text-slate-400 mr-1">状態:</span>
+                            <button class="filter-status-btn active px-3 py-1 rounded-lg bg-brand-50 text-brand-600 font-semibold border border-brand-200 transition" data-status="all">すべて</button>
+                            <button class="filter-status-btn px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="active">未完了</button>
+                            <button class="filter-status-btn px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="completed">完了済み</button>
+                        </div>
+                    </div>
+
+                    <!-- Tasks Listing Container -->
+                    <div id="tasks-container" class="space-y-3">
+                        <!-- Empty Loading State -->
+                        <div id="tasks-loading" class="py-12 text-center bg-white rounded-2xl border border-slate-200/80">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent mb-2"></div>
+                            <p class="text-sm text-slate-500">タスクを読み込み中...</p>
+                        </div>
+
+                        <!-- Empty Task List Placeholder -->
+                        <div id="tasks-empty" class="hidden py-12 text-center bg-white rounded-2xl border border-slate-200/80 p-6">
+                            <i class="fa-regular fa-clipboard text-4xl text-slate-300 mb-3"></i>
+                            <h4 class="text-base font-semibold text-slate-700">タスクが見つかりません</h4>
+                            <p class="text-sm text-slate-500 mt-1">条件にマッチするタスクがないか、まだ作成されていません。</p>
+                        </div>
+
+                        <!-- Task cards will be dynamically injected here -->
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <!-- ================= FEEDBACKS TAB ================= -->
-        <section id="content-feedbacks" class="space-y-6">
-            <!-- Top Banner -->
-            <div class="bg-gradient-to-r from-brand-600 to-emerald-700 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <h2 class="text-xl sm:text-2xl font-bold mb-2">あなたの声で直売所をもっと素敵に！</h2>
-                    <p class="text-brand-100 text-sm sm:text-base">「こんなお野菜を取り扱ってほしい」「店舗サービスへの意見」「イベントのリクエスト」など、お気軽にお寄せください。</p>
-                </div>
-                <button onclick="openFeedbackModal()" class="bg-white text-brand-700 hover:bg-brand-50 font-bold px-5 py-3 rounded-xl shadow-md transition transform hover:-translate-y-0.5 whitespace-nowrap text-sm sm:text-base flex items-center space-x-2">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span>意見・リクエストを投函する</span>
-                </button>
-            </div>
-
-            <!-- Feedbacks Filter & List -->
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <!-- Sidebar Filter -->
-                <div class="lg:col-span-1 space-y-4">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                        <h3 class="font-bold text-slate-700 mb-3 flex items-center space-x-2">
-                            <i class="fa-solid fa-filter text-brand-600"></i>
-                            <span>カテゴリー絞り込み</span>
-                        </h3>
-                        <div class="space-y-2 text-sm" id="categoryFilters">
-                            <button onclick="filterFeedbacks('all')" class="cat-filter-btn w-full text-left px-3 py-2 rounded-lg bg-brand-50 text-brand-700 font-bold transition">すべて表示</button>
-                            <button onclick="filterFeedbacks('商品・野菜リクエスト')" class="cat-filter-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-600 transition">🥦 商品・野菜リクエスト</button>
-                            <button onclick="filterFeedbacks('店舗サービス改善')" class="cat-filter-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-600 transition">🏪 店舗サービス改善</button>
-                            <button onclick="filterFeedbacks('イベント・体験')" class="cat-filter-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-600 transition">🎈 イベント・体験</button>
-                            <button onclick="filterFeedbacks('その他')" class="cat-filter-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-600 transition">💬 その他</button>
-                        </div>
-                    </div>
-
-                    <!-- Guidance Card -->
-                    <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-800 space-y-2">
-                        <p class="font-bold flex items-center"><i class="fa-solid fa-lightbulb text-amber-500 mr-1.5"></i>スタッフ対応について</p>
-                        <p>皆様からいただいたご意見はスタッフが拝見し、タスクとして店舗改善に反映させていただきます！</p>
-                    </div>
-                </div>
-
-                <!-- Feedback List -->
-                <div class="lg:col-span-3 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center space-x-2">
-                            <span>投稿されたご意見・ご要望</span>
-                            <span id="feedbackCount" class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-mono">0件</span>
-                        </h3>
-                    </div>
-
-                    <div id="feedbackList" class="space-y-4">
-                        <!-- Dynamic feedbacks loading -->
-                        <div class="text-center py-12 bg-white rounded-2xl border border-slate-100">
-                            <i class="fa-solid fa-spinner fa-spin text-3xl text-brand-500 mb-3"></i>
-                            <p class="text-slate-500 text-sm">データを読み込み中...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ================= TASKS TAB ================= -->
-        <section id="content-tasks" class="space-y-6 hidden">
-            <!-- Task Header & Action -->
-            <div class="bg-slate-800 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <h2 class="text-xl sm:text-2xl font-bold mb-1 flex items-center space-x-2">
-                        <span>直売所スタッフ タスク管理</span>
-                        <span class="bg-brand-500 text-white text-xs px-2.5 py-1 rounded-full font-medium">スタッフ専用</span>
-                    </h2>
-                    <p class="text-slate-300 text-sm">お客さまからの声や日々の店舗管理タスクを更新・追跡できます。</p>
-                </div>
-                <button onclick="openTaskModal()" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-3 rounded-xl shadow-md transition transform hover:-translate-y-0.5 text-sm sm:text-base flex items-center space-x-2 whitespace-nowrap">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>新規タスクの作成</span>
-                </button>
-            </div>
-
-            <!-- Task Controls / Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center">
-                    <p class="text-xs text-slate-500 font-bold mb-1">総タスク数</p>
-                    <p id="statTotal" class="text-2xl font-bold text-slate-800">0</p>
-                </div>
-                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-center">
-                    <p class="text-xs text-amber-700 font-bold mb-1">未対応</p>
-                    <p id="statPending" class="text-2xl font-bold text-amber-600">0</p>
-                </div>
-                <div class="bg-blue-50 p-4 rounded-xl border border-blue-200 text-center">
-                    <p class="text-xs text-blue-700 font-bold mb-1">対応中</p>
-                    <p id="statProgress" class="text-2xl font-bold text-blue-600">0</p>
-                </div>
-                <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 text-center">
-                    <p class="text-xs text-emerald-700 font-bold mb-1">対応完了</p>
-                    <p id="statDone" class="text-2xl font-bold text-emerald-600">0</p>
-                </div>
-            </div>
-
-            <!-- Task List Table / Cards -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <!-- Filter Tabs -->
-                <div class="flex border-b border-slate-200 bg-slate-50 px-4 pt-3 space-x-4 text-xs sm:text-sm font-bold">
-                    <button onclick="filterTasks('all')" id="task-filter-all" class="task-tab-btn pb-3 border-b-2 border-brand-600 text-brand-600">すべて</button>
-                    <button onclick="filterTasks('未対応')" id="task-filter-pending" class="task-tab-btn pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800">未対応</button>
-                    <button onclick="filterTasks('対応中')" id="task-filter-progress" class="task-tab-btn pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800">対応中</button>
-                    <button onclick="filterTasks('完了')" id="task-filter-done" class="task-tab-btn pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800">完了</button>
-                </div>
-
-                <div id="taskList" class="divide-y divide-slate-100">
-                    <div class="text-center py-12">
-                        <i class="fa-solid fa-spinner fa-spin text-3xl text-brand-500 mb-3"></i>
-                        <p class="text-slate-500 text-sm">タスクを読み込み中...</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ================= ABOUT TAB ================= -->
-        <section id="content-about" class="space-y-6 hidden">
-            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
-                <div class="border-b border-slate-100 pb-4">
-                    <h2 class="text-2xl font-bold text-brand-800">青空マルシェ直売所のご案内</h2>
-                    <p class="text-slate-500 text-sm mt-1">地域農家直送の新鮮野菜と旬の果物をお届けしています。</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <div class="flex items-start space-x-3">
-                            <div class="bg-brand-100 text-brand-700 p-3 rounded-lg"><i class="fa-solid fa-clock text-lg"></i></div>
-                            <div>
-                                <h4 class="font-bold text-slate-700">営業時間</h4>
-                                <p class="text-slate-600 text-sm">9:00 〜 17:00（年中無休・年末年始を除く）</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start space-x-3">
-                            <div class="bg-brand-100 text-brand-700 p-3 rounded-lg"><i class="fa-solid fa-location-dot text-lg"></i></div>
-                            <div>
-                                <h4 class="font-bold text-slate-700">所在地</h4>
-                                <p class="text-slate-600 text-sm">〒123-4567 ○○県マルシェ市緑町 1-2-3</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start space-x-3">
-                            <div class="bg-brand-100 text-brand-700 p-3 rounded-lg"><i class="fa-solid fa-phone text-lg"></i></div>
-                            <div>
-                                <h4 class="font-bold text-slate-700">お問合せ電話</h4>
-                                <p class="text-slate-600 text-sm">0120-000-999</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-brand-50 p-5 rounded-2xl border border-brand-100 flex flex-col justify-between">
-                        <div>
-                            <h4 class="font-bold text-brand-800 mb-2"><i class="fa-solid fa-heart mr-2"></i>直売所のこだわり</h4>
-                            <ul class="text-xs sm:text-sm text-brand-900 space-y-2 list-disc list-inside">
-                                <li>朝採れ野菜の当日販売</li>
-                                <li>生産者の顔が見える安心・安全の品質</li>
-                                <li>お客さまのリクエストに基づくラインナップ更新</li>
-                            </ul>
-                        </div>
-                        <div class="mt-4 pt-3 border-t border-brand-200/60 text-xs text-brand-700 font-medium">
-                            ご意見・入荷リクエストは「お客さまの声」タブからいつでも投稿いただけます！
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-400 py-6 border-t border-slate-800 text-center text-xs">
-        <p>&copy; 2026 青空マルシェ直売所 - All Rights Reserved.</p>
-        <p class="mt-1 text-slate-500">Powered by Firebase & GitHub Pages</p>
-    </footer>
-
-    <!-- Modal: New Feedback Form -->
-    <div id="feedbackModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl transform transition-all">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-                <h3 class="font-bold text-lg text-slate-800 flex items-center space-x-2">
-                    <i class="fa-solid fa-comment-dots text-brand-600"></i>
-                    <span>意見・リクエストの投函</span>
-                </h3>
-                <button onclick="closeFeedbackModal()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+    <!-- Task Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-900">タスクの編集</h3>
+                <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
-
-            <form id="feedbackForm" class="space-y-4">
+            
+            <form id="edit-task-form" class="space-y-4">
+                <input type="hidden" id="edit-task-id">
+                
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">カテゴリー <span class="text-red-500">*</span></label>
-                    <select id="fbCategory" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        <option value="商品・野菜リクエスト">🥦 商品・野菜リクエスト</option>
-                        <option value="店舗サービス改善">🏪 店舗サービス改善</option>
-                        <option value="イベント・体験">🎈 イベント・体験</option>
-                        <option value="その他">💬 その他</option>
-                    </select>
+                    <label for="edit-task-title" class="block text-xs font-semibold text-slate-600 mb-1">タイトル <span class="text-red-500">*</span></label>
+                    <input type="text" id="edit-task-title" required 
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">タイトル <span class="text-red-500">*</span></label>
-                    <input type="text" id="fbTitle" required placeholder="例: オーガニックトマトの取り扱い要望" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">内容詳細 <span class="text-red-500">*</span></label>
-                    <textarea id="fbContent" rows="4" required placeholder="具体的なご意見やリクエストをご記入ください..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">お名前 (ニックネーム可)</label>
-                    <input type="text" id="fbAuthor" placeholder="匿名希望" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                </div>
-
-                <div class="pt-3 flex justify-end space-x-3 border-t border-slate-100">
-                    <button type="button" onclick="closeFeedbackModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl font-medium">キャンセル</button>
-                    <button type="submit" id="fbSubmitBtn" class="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow transition">送信する</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal: New Task Form -->
-    <div id="taskModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl transform transition-all">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-                <h3 class="font-bold text-lg text-slate-800 flex items-center space-x-2">
-                    <i class="fa-solid fa-list-check text-brand-600"></i>
-                    <span id="taskModalTitle">新規タスクの作成</span>
-                </h3>
-                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <form id="taskForm" class="space-y-4">
-                <input type="hidden" id="taskId">
-                <input type="hidden" id="taskSourceFeedbackId">
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">タスク名 <span class="text-red-500">*</span></label>
-                    <input type="text" id="taskTitle" required placeholder="例: ○○様要望のトマト仕入れ調査" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <label for="edit-task-desc" class="block text-xs font-semibold text-slate-600 mb-1">詳細メモ</label>
+                    <textarea id="edit-task-desc" rows="3" 
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition resize-none"></textarea>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">優先度</label>
-                        <select id="taskPriority" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                            <option value="中">中</option>
-                            <option value="高">高 (急ぎ)</option>
-                            <option value="低">低</option>
+                        <label for="edit-task-priority" class="block text-xs font-semibold text-slate-600 mb-1">優先度</label>
+                        <select id="edit-task-priority" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                            <option value="low">低 (Low)</option>
+                            <option value="medium">中 (Medium)</option>
+                            <option value="high">高 (High)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">ステータス</label>
-                        <select id="taskStatus" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                            <option value="未対応">未対応</option>
-                            <option value="対応中">対応中</option>
-                            <option value="完了">完了</option>
+                        <label for="edit-task-category" class="block text-xs font-semibold text-slate-600 mb-1">カテゴリ</label>
+                        <select id="edit-task-category" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
+                            <option value="work">仕事</option>
+                            <option value="personal">個人</option>
+                            <option value="study">学習</option>
+                            <option value="shopping">買い物</option>
                         </select>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">担当者名</label>
-                    <input type="text" id="taskAssignee" placeholder="例: 山田" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <label for="edit-task-duedate" class="block text-xs font-semibold text-slate-600 mb-1">期限日</label>
+                    <input type="date" id="edit-task-duedate" 
+                        class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">タスク詳細メモ</label>
-                    <textarea id="taskDetail" rows="3" placeholder="対応方針やメモを記入..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                </div>
-
-                <div class="pt-3 flex justify-end space-x-3 border-t border-slate-100">
-                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl font-medium">キャンセル</button>
-                    <button type="submit" id="taskSubmitBtn" class="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow transition">保存する</button>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" id="cancel-edit-btn" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">キャンセル</button>
+                    <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-sm transition">変更を保存</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Firebase Script Logic -->
+    <!-- Firebase Script & App Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
         import { 
             getAuth, 
             GoogleAuthProvider, 
             signInWithPopup, 
             signOut, 
             onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
         import { 
             getFirestore, 
             collection, 
+            doc, 
             addDoc, 
             updateDoc, 
             deleteDoc, 
-            doc, 
             onSnapshot, 
             serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-        // Firebase Configuration provided by user
+        // Provided Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBMQFvHxDwL25Io09qAe67Ia3_dQkq9Hgk",
             authDomain: "task-18d57.firebaseapp.com",
@@ -429,472 +379,455 @@
 
         // Application State
         let currentUser = null;
-        let allFeedbacks = [];
+        let unsubscribeTasks = null;
         let allTasks = [];
-        let currentCatFilter = 'all';
-        let currentTaskFilter = 'all';
+        let currentFilterStatus = 'all';
+        let searchQuery = '';
+        let currentSort = 'created-desc';
 
-        // Custom Toast Notification
-        window.showToast = function(message, type = 'info') {
-            const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toastMsg');
-            const toastIcon = document.getElementById('toastIcon');
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColors = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white',
+                info: 'bg-slate-800 text-white'
+            };
 
-            toastMsg.textContent = message;
-            if (type === 'success') {
-                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
-            } else if (type === 'error') {
-                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg";
-            } else {
-                toastIcon.className = "fa-solid fa-circle-info text-amber-400 text-lg";
-            }
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
 
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg font-medium text-sm transition-all transform translate-y-2 opacity-0 pointer-events-auto ${bgColors[type] || bgColors.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info}"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
 
+            container.appendChild(toast);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            // Auto dismiss
             setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
             }, 3500);
-        };
+        }
 
-        // Auth Listener
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, match => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[match]));
+        }
+
+        // Auth State Listener
         onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            const authBtnText = document.getElementById('authBtnText');
-            const userInfo = document.getElementById('userInfo');
-            const userAvatar = document.getElementById('userAvatar');
-            const userName = document.getElementById('userName');
+            const authLoading = document.getElementById('auth-loading');
+            const userInfo = document.getElementById('user-info');
+            const loginBtn = document.getElementById('login-btn');
+            const loggedOutHero = document.getElementById('logged-out-hero');
+            const loggedInApp = document.getElementById('logged-in-app');
+
+            authLoading.classList.add('hidden');
 
             if (user) {
-                authBtnText.textContent = 'ログアウト';
-                userAvatar.src = user.photoURL || 'https://via.placeholder.com/40';
-                userName.textContent = user.displayName || user.email;
+                currentUser = user;
+                // Update UI for Logged-In
+                document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/150';
+                document.getElementById('user-name').textContent = user.displayName || 'ユーザー';
+                
                 userInfo.classList.remove('hidden');
-                
-                // Pre-fill author name if feedback modal opens
-                document.getElementById('fbAuthor').value = user.displayName || '';
+                userInfo.classList.add('flex');
+                loginBtn.classList.add('hidden');
+
+                loggedOutHero.classList.add('hidden');
+                loggedOutHero.classList.remove('flex');
+                loggedInApp.classList.remove('hidden');
+
+                // Attach real-time task listener
+                attachTasksListener(user.uid);
             } else {
-                authBtnText.textContent = 'ログイン';
+                currentUser = null;
+                if (unsubscribeTasks) unsubscribeTasks();
+
                 userInfo.classList.add('hidden');
+                userInfo.classList.remove('flex');
+                loginBtn.classList.remove('hidden');
+                loginBtn.classList.add('flex');
+
+                loggedOutHero.classList.remove('hidden');
+                loggedOutHero.classList.add('flex');
+                loggedInApp.classList.add('hidden');
+
+                allTasks = [];
             }
         });
 
-        // Google Sign In / Sign Out Toggle
-        document.getElementById('authBtn').addEventListener('click', async () => {
-            if (currentUser) {
-                try {
-                    await signOut(auth);
-                    showToast('ログアウトしました', 'info');
-                } catch (err) {
-                    showToast('ログアウトエラー: ' + err.message, 'error');
-                }
-            } else {
-                try {
-                    await signInWithPopup(auth, googleProvider);
-                    showToast('Googleログインに成功しました！', 'success');
-                } catch (err) {
-                    console.error("Auth error:", err);
-                    showToast('ログインに失敗しました', 'error');
-                }
+        // Auth Action Handlers
+        async function handleLogin() {
+            try {
+                await signInWithPopup(auth, googleProvider);
+                showToast('ログインしました', 'success');
+            } catch (error) {
+                console.error("Login Error:", error);
+                showToast('ログインに失敗しました: ' + error.message, 'error');
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await signOut(auth);
+                showToast('ログアウトしました', 'info');
+            } catch (error) {
+                console.error("Logout Error:", error);
+                showToast('ログアウトに失敗しました', 'error');
+            }
+        }
+
+        document.getElementById('login-btn').addEventListener('click', handleLogin);
+        document.getElementById('hero-login-btn').addEventListener('click', handleLogin);
+        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+        // Attach Firestore Realtime Task Listener
+        function attachTasksListener(userId) {
+            const tasksLoading = document.getElementById('tasks-loading');
+            tasksLoading.classList.remove('hidden');
+
+            // Using path: artifacts/{appId}/users/{userId}/tasks
+            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+            const tasksCollection = collection(db, 'artifacts', appId, 'users', userId, 'tasks');
+
+            unsubscribeTasks = onSnapshot(tasksCollection, (snapshot) => {
+                allTasks = [];
+                snapshot.forEach((docSnap) => {
+                    allTasks.push({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    });
+                });
+
+                tasksLoading.classList.add('hidden');
+                renderTasks();
+                updateStats();
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
+                showToast('データの取得中にエラーが発生しました', 'error');
+                tasksLoading.classList.add('hidden');
+            });
+        }
+
+        // Create Task
+        document.getElementById('add-task-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const titleInput = document.getElementById('task-title');
+            const descInput = document.getElementById('task-desc');
+            const priorityInput = document.getElementById('task-priority');
+            const categoryInput = document.getElementById('task-category');
+            const dueDateInput = document.getElementById('task-duedate');
+            const submitBtn = document.getElementById('submit-task-btn');
+
+            const title = titleInput.value.trim();
+            if (!title) return;
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-60');
+
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+                const tasksCollection = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks');
+
+                await addDoc(tasksCollection, {
+                    title: title,
+                    description: descInput.value.trim(),
+                    priority: priorityInput.value,
+                    category: categoryInput.value,
+                    dueDate: dueDateInput.value || null,
+                    completed: false,
+                    createdAt: serverTimestamp()
+                });
+
+                // Reset Form
+                titleInput.value = '';
+                descInput.value = '';
+                priorityInput.value = 'medium';
+                categoryInput.value = 'personal';
+                dueDateInput.value = '';
+
+                showToast('タスクを追加しました', 'success');
+            } catch (error) {
+                console.error("Add Task Error:", error);
+                showToast('タスクの作成に失敗しました', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-60');
             }
         });
 
-        // Realtime Listener: Feedbacks
-        const feedbacksCol = collection(db, "feedbacks");
-        onSnapshot(feedbacksCol, (snapshot) => {
-            allFeedbacks = [];
-            snapshot.forEach((docSnap) => {
-                allFeedbacks.push({ id: docSnap.id, ...docSnap.data() });
-            });
-            // Client-side sort by createdAt desc
-            allFeedbacks.sort((a, b) => {
-                const timeA = a.createdAt?.seconds || 0;
-                const timeB = b.createdAt?.seconds || 0;
-                return timeB - timeA;
-            });
-            renderFeedbacks();
-        }, (err) => {
-            console.error("Firestore feedbacks error:", err);
-            showToast("意見データの読み込みに失敗しました", "error");
+        // Toggle Task Completion
+        window.toggleTaskComplete = async function(taskId, currentStatus) {
+            if (!currentUser) return;
+
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+                const taskRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks', taskId);
+
+                await updateDoc(taskRef, {
+                    completed: !currentStatus
+                });
+
+                showToast(!currentStatus ? 'タスクを完了にしました' : 'タスクを未完了に戻しました', 'info');
+            } catch (error) {
+                console.error("Toggle Complete Error:", error);
+                showToast('状態の更新に失敗しました', 'error');
+            }
+        };
+
+        // Delete Task
+        window.deleteTask = async function(taskId) {
+            if (!currentUser) return;
+
+            if (!confirm('このタスクを削除しますか？')) return;
+
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+                const taskRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks', taskId);
+
+                await deleteDoc(taskRef);
+                showToast('タスクを削除しました', 'info');
+            } catch (error) {
+                console.error("Delete Task Error:", error);
+                showToast('削除に失敗しました', 'error');
+            }
+        };
+
+        // Open Edit Modal
+        window.openEditModal = function(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('edit-task-id').value = task.id;
+            document.getElementById('edit-task-title').value = task.title || '';
+            document.getElementById('edit-task-desc').value = task.description || '';
+            document.getElementById('edit-task-priority').value = task.priority || 'medium';
+            document.getElementById('edit-task-category').value = task.category || 'personal';
+            document.getElementById('edit-task-duedate').value = task.dueDate || '';
+
+            document.getElementById('edit-modal').classList.remove('hidden');
+        };
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        document.getElementById('close-modal-btn').addEventListener('click', closeEditModal);
+        document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
+
+        // Save Task Edits
+        document.getElementById('edit-task-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const taskId = document.getElementById('edit-task-id').value;
+            const title = document.getElementById('edit-task-title').value.trim();
+            const description = document.getElementById('edit-task-desc').value.trim();
+            const priority = document.getElementById('edit-task-priority').value;
+            const category = document.getElementById('edit-task-category').value;
+            const dueDate = document.getElementById('edit-task-duedate').value || null;
+
+            if (!title) return;
+
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+                const taskRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'tasks', taskId);
+
+                await updateDoc(taskRef, {
+                    title,
+                    description,
+                    priority,
+                    category,
+                    dueDate
+                });
+
+                closeEditModal();
+                showToast('タスクを更新しました', 'success');
+            } catch (error) {
+                console.error("Update Task Error:", error);
+                showToast('更新に失敗しました', 'error');
+            }
         });
 
-        // Realtime Listener: Tasks
-        const tasksCol = collection(db, "tasks");
-        onSnapshot(tasksCol, (snapshot) => {
-            allTasks = [];
-            snapshot.forEach((docSnap) => {
-                allTasks.push({ id: docSnap.id, ...docSnap.data() });
+        // Filtering & Sorting Listeners
+        document.querySelectorAll('.filter-status-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-status-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-brand-50', 'text-brand-600', 'border-brand-200');
+                    b.classList.add('bg-slate-100', 'text-slate-600');
+                });
+
+                e.target.classList.add('active', 'bg-brand-50', 'text-brand-600', 'border-brand-200');
+                e.target.classList.remove('bg-slate-100', 'text-slate-600');
+
+                currentFilterStatus = e.target.dataset.status;
+                renderTasks();
             });
-            allTasks.sort((a, b) => {
-                const timeA = a.createdAt?.seconds || 0;
-                const timeB = b.createdAt?.seconds || 0;
-                return timeB - timeA;
-            });
+        });
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase().trim();
             renderTasks();
-            updateTaskStats();
-        }, (err) => {
-            console.error("Firestore tasks error:", err);
-            showToast("タスクデータの読み込みに失敗しました", "error");
         });
 
-        // Render Feedbacks
-        window.renderFeedbacks = function() {
-            const listEl = document.getElementById('feedbackList');
-            const countEl = document.getElementById('feedbackCount');
+        document.getElementById('sort-select').addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            renderTasks();
+        });
 
-            let filtered = allFeedbacks;
-            if (currentCatFilter !== 'all') {
-                filtered = allFeedbacks.filter(f => f.category === currentCatFilter);
-            }
+        // Filter and Sort Processing
+        function getFilteredTasks() {
+            return allTasks.filter(task => {
+                // Status Filter
+                if (currentFilterStatus === 'active' && task.completed) return false;
+                if (currentFilterStatus === 'completed' && !task.completed) return false;
 
-            countEl.textContent = `${filtered.length}件`;
-
-            if (filtered.length === 0) {
-                listEl.innerHTML = `
-                    <div class="text-center py-12 bg-white rounded-2xl border border-slate-100">
-                        <i class="fa-regular fa-comments text-4xl text-slate-300 mb-2"></i>
-                        <p class="text-slate-500 text-sm">該当するご意見・リクエストはありません</p>
-                    </div>
-                `;
-                return;
-            }
-
-            listEl.innerHTML = filtered.map(fb => {
-                const dateStr = fb.createdAt ? new Date(fb.createdAt.seconds * 1000).toLocaleDateString('ja-JP') : 'たった今';
-                
-                // Check if this feedback has linked tasks
-                const linkedTasks = allTasks.filter(t => t.sourceFeedbackId === fb.id);
-                let taskBadgeHtml = '';
-                if (linkedTasks.length > 0) {
-                    const isAllDone = linkedTasks.every(t => t.status === '完了');
-                    if (isAllDone) {
-                        taskBadgeHtml = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold"><i class="fa-solid fa-check mr-1"></i>店舗対応完了</span>`;
-                    } else {
-                        taskBadgeHtml = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold"><i class="fa-solid fa-clock mr-1"></i>店舗対応中</span>`;
-                    }
+                // Search Query
+                if (searchQuery) {
+                    const matchTitle = (task.title || '').toLowerCase().includes(searchQuery);
+                    const matchDesc = (task.description || '').toLowerCase().includes(searchQuery);
+                    if (!matchTitle && !matchDesc) return false;
                 }
 
-                return `
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                            <div class="flex items-center space-x-2">
-                                <span class="bg-brand-100 text-brand-800 font-bold text-xs px-2.5 py-1 rounded-lg">${fb.category}</span>
-                                ${taskBadgeHtml}
+                return true;
+            }).sort((a, b) => {
+                if (currentSort === 'created-desc') {
+                    return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+                } else if (currentSort === 'created-asc') {
+                    return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+                } else if (currentSort === 'duedate-asc') {
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                } else if (currentSort === 'priority-desc') {
+                    const priorityWeight = { high: 3, medium: 2, low: 1 };
+                    return (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
+                }
+                return 0;
+            });
+        }
+
+        // Render Tasks to DOM
+        function renderTasks() {
+            const container = document.getElementById('tasks-container');
+            const emptyState = document.getElementById('tasks-empty');
+            const filteredTasks = getFilteredTasks();
+
+            // Clear previous items except loader and empty placeholders
+            const existingCards = container.querySelectorAll('.task-card');
+            existingCards.forEach(card => card.remove());
+
+            if (filteredTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            const priorityBadges = {
+                high: '<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-red-50 text-red-600 border border-red-200">高</span>',
+                medium: '<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">中</span>',
+                low: '<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">低</span>'
+            };
+
+            const categoryLabels = {
+                work: '<i class="fa-solid fa-briefcase text-blue-500 mr-1"></i> 仕事',
+                personal: '<i class="fa-solid fa-user text-purple-500 mr-1"></i> 個人',
+                study: '<i class="fa-solid fa-graduation-cap text-emerald-500 mr-1"></i> 学習',
+                shopping: '<i class="fa-solid fa-cart-shopping text-amber-500 mr-1"></i> 買い物'
+            };
+
+            filteredTasks.forEach(task => {
+                const card = document.createElement('div');
+                card.className = `task-card bg-white p-4 sm:p-5 rounded-2xl border ${task.completed ? 'border-slate-200 bg-slate-50/50' : 'border-slate-200/80 shadow-sm'} flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-200 hover:border-slate-300`;
+
+                const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date().setHours(0,0,0,0);
+
+                card.innerHTML = `
+                    <div class="flex items-start gap-3.5 flex-1 min-w-0">
+                        <!-- Checkbox -->
+                        <button onclick="toggleTaskComplete('${task.id}', ${task.completed})" 
+                            class="mt-0.5 flex-shrink-0 w-6 h-6 rounded-lg border-2 ${task.completed ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 text-transparent hover:border-brand-500'} flex items-center justify-center transition">
+                            <i class="fa-solid fa-check text-xs"></i>
+                        </button>
+
+                        <div class="space-y-1 flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h4 class="text-base font-semibold ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'} break-words">
+                                    ${escapeHtml(task.title)}
+                                </h4>
+                                ${priorityBadges[task.priority] || ''}
                             </div>
-                            <span class="text-xs text-slate-400 font-mono"><i class="fa-regular fa-clock mr-1"></i>${dateStr}</span>
-                        </div>
 
-                        <h4 class="font-bold text-slate-800 text-base mb-2">${escapeHtml(fb.title)}</h4>
-                        <p class="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed mb-4">${escapeHtml(fb.content)}</p>
+                            ${task.description ? `
+                                <p class="text-xs text-slate-500 ${task.completed ? 'line-through text-slate-400' : ''} line-clamp-2">
+                                    ${escapeHtml(task.description)}
+                                </p>
+                            ` : ''}
 
-                        <div class="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
-                            <span class="flex items-center space-x-1">
-                                <i class="fa-solid fa-user-circle text-slate-400 text-sm"></i>
-                                <span>投稿者: ${escapeHtml(fb.author || '匿名')}</span>
-                            </span>
+                            <div class="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
+                                <span class="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-600">
+                                    ${categoryLabels[task.category] || task.category}
+                                </span>
 
-                            <div class="flex space-x-2">
-                                <button onclick="convertFeedbackToTask('${fb.id}', '${escapeJsString(fb.title)}', '${escapeJsString(fb.content)}')" class="bg-slate-100 hover:bg-brand-50 text-slate-700 hover:text-brand-700 px-3 py-1.5 rounded-lg font-bold transition flex items-center space-x-1">
-                                    <i class="fa-solid fa-arrow-right-to-bracket text-brand-600"></i>
-                                    <span>タスクに変換</span>
-                                </button>
-                                ${currentUser && (currentUser.uid === fb.userId) ? `
-                                    <button onclick="deleteFeedback('${fb.id}')" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition" title="削除">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
+                                ${task.dueDate ? `
+                                    <span class="flex items-center gap-1 ${isOverdue ? 'text-rose-600 font-semibold' : ''}">
+                                        <i class="fa-regular fa-calendar text-xs"></i>
+                                        ${task.dueDate} ${isOverdue ? '(期限切れ)' : ''}
+                                    </span>
                                 ` : ''}
                             </div>
                         </div>
                     </div>
-                `;
-            }).join('');
-        };
 
-        // Filter Feedbacks
-        window.filterFeedbacks = function(cat) {
-            currentCatFilter = cat;
-            document.querySelectorAll('.cat-filter-btn').forEach(btn => {
-                btn.classList.remove('bg-brand-50', 'text-brand-700', 'font-bold');
-                btn.classList.add('text-slate-600');
-            });
-            event.currentTarget.classList.add('bg-brand-50', 'text-brand-700', 'font-bold');
-            renderFeedbacks();
-        };
-
-        // Render Tasks
-        window.renderTasks = function() {
-            const listEl = document.getElementById('taskList');
-
-            let filtered = allTasks;
-            if (currentTaskFilter !== 'all') {
-                filtered = allTasks.filter(t => t.status === currentTaskFilter);
-            }
-
-            if (filtered.length === 0) {
-                listEl.innerHTML = `
-                    <div class="text-center py-12">
-                        <i class="fa-solid fa-clipboard-check text-4xl text-slate-300 mb-2"></i>
-                        <p class="text-slate-500 text-sm">該当するタスクはありません</p>
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 w-full sm:w-auto justify-end">
+                        <button onclick="openEditModal('${task.id}')" class="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition" title="編集">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteTask('${task.id}')" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="削除">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
                     </div>
                 `;
-                return;
-            }
 
-            listEl.innerHTML = filtered.map(t => {
-                let statusColor = 'bg-slate-100 text-slate-700';
-                if (t.status === '未対応') statusColor = 'bg-amber-100 text-amber-800 border border-amber-300';
-                if (t.status === '対応中') statusColor = 'bg-blue-100 text-blue-800 border border-blue-300';
-                if (t.status === '完了') statusColor = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
-
-                let priorityColor = 'text-slate-500';
-                if (t.priority === '高') priorityColor = 'text-rose-600 font-bold';
-
-                return `
-                    <div class="p-4 hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="space-y-1 flex-grow">
-                            <div class="flex items-center space-x-2">
-                                <span class="text-xs px-2.5 py-0.5 rounded-full font-bold ${statusColor}">${t.status}</span>
-                                <span class="text-xs ${priorityColor}">優先度: ${t.priority || '中'}</span>
-                                ${t.sourceFeedbackId ? `<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">お客さまの声由来</span>` : ''}
-                            </div>
-                            <h4 class="font-bold text-slate-800 text-base">${escapeHtml(t.title)}</h4>
-                            ${t.detail ? `<p class="text-xs text-slate-500 line-clamp-2">${escapeHtml(t.detail)}</p>` : ''}
-                            <div class="flex items-center space-x-4 text-xs text-slate-400 pt-1">
-                                <span><i class="fa-solid fa-user mr-1"></i>担当: ${escapeHtml(t.assignee || '未定')}</span>
-                            </div>
-                        </div>
-
-                        <!-- Status Changer / Actions -->
-                        <div class="flex items-center space-x-2 self-end sm:self-center">
-                            <select onchange="updateTaskStatus('${t.id}', this.value)" class="bg-white border border-slate-300 rounded-lg text-xs font-bold px-2.5 py-1.5 focus:ring-2 focus:ring-brand-500">
-                                <option value="未対応" ${t.status === '未対応' ? 'selected' : ''}>未対応</option>
-                                <option value="対応中" ${t.status === '対応中' ? 'selected' : ''}>対応中</option>
-                                <option value="完了" ${t.status === '完了' ? 'selected' : ''}>完了</option>
-                            </select>
-
-                            <button onclick="editTask('${t.id}')" class="text-slate-500 hover:text-slate-800 p-2 hover:bg-slate-200 rounded-lg text-xs transition" title="編集">
-                                <i class="fa-solid fa-pen"></i>
-                            </button>
-
-                            <button onclick="deleteTask('${t.id}')" class="text-rose-500 hover:bg-rose-50 p-2 rounded-lg text-xs transition" title="削除">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        };
-
-        // Update Task Statistics
-        function updateTaskStats() {
-            const pending = allTasks.filter(t => t.status === '未対応').length;
-            const progress = allTasks.filter(t => t.status === '対応中').length;
-            const done = allTasks.filter(t => t.status === '完了').length;
-
-            document.getElementById('statTotal').textContent = allTasks.length;
-            document.getElementById('statPending').textContent = pending;
-            document.getElementById('statProgress').textContent = progress;
-            document.getElementById('statDone').textContent = done;
-
-            // Header Badge
-            const badge = document.getElementById('pendingTaskBadge');
-            if (pending > 0) {
-                badge.textContent = pending;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
+                container.appendChild(card);
+            });
         }
 
-        // Filter Tasks
-        window.filterTasks = function(status) {
-            currentTaskFilter = status;
-            document.querySelectorAll('.task-tab-btn').forEach(btn => {
-                btn.classList.remove('border-brand-600', 'text-brand-600');
-                btn.classList.add('border-transparent', 'text-slate-500');
-            });
-            event.currentTarget.classList.add('border-brand-600', 'text-brand-600');
-            event.currentTarget.classList.remove('border-transparent', 'text-slate-500');
-            renderTasks();
-        };
+        // Update Stats Counters & Progress
+        function updateStats() {
+            const total = allTasks.length;
+            const completed = allTasks.filter(t => t.completed).length;
+            const active = total - completed;
+            const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-        // Submit Feedback
-        document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = document.getElementById('fbSubmitBtn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = '送信中...';
-
-            try {
-                await addDoc(collection(db, "feedbacks"), {
-                    category: document.getElementById('fbCategory').value,
-                    title: document.getElementById('fbTitle').value.trim(),
-                    content: document.getElementById('fbContent').value.trim(),
-                    author: document.getElementById('fbAuthor').value.trim() || '匿名',
-                    userId: currentUser ? currentUser.uid : null,
-                    createdAt: serverTimestamp()
-                });
-
-                showToast('ご意見・リクエストを投函しました！ありがとうございます。', 'success');
-                closeFeedbackModal();
-                document.getElementById('feedbackForm').reset();
-            } catch (err) {
-                console.error("Error submitting feedback:", err);
-                showToast('送信に失敗しました', 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '送信する';
-            }
-        });
-
-        // Submit / Save Task
-        document.getElementById('taskForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = document.getElementById('taskSubmitBtn');
-            submitBtn.disabled = true;
-
-            const taskId = document.getElementById('taskId').value;
-            const taskData = {
-                title: document.getElementById('taskTitle').value.trim(),
-                priority: document.getElementById('taskPriority').value,
-                status: document.getElementById('taskStatus').value,
-                assignee: document.getElementById('taskAssignee').value.trim(),
-                detail: document.getElementById('taskDetail').value.trim(),
-                sourceFeedbackId: document.getElementById('taskSourceFeedbackId').value || null,
-                updatedAt: serverTimestamp()
-            };
-
-            try {
-                if (taskId) {
-                    await updateDoc(doc(db, "tasks", taskId), taskData);
-                    showToast('タスクを更新しました', 'success');
-                } else {
-                    taskData.createdAt = serverTimestamp();
-                    await addDoc(collection(db, "tasks"), taskData);
-                    showToast('新しいタスクを作成しました', 'success');
-                }
-                closeTaskModal();
-                document.getElementById('taskForm').reset();
-            } catch (err) {
-                console.error("Error saving task:", err);
-                showToast('タスク保存に失敗しました', 'error');
-            } finally {
-                submitBtn.disabled = false;
-            }
-        });
-
-        // Delete Feedback
-        window.deleteFeedback = async function(id) {
-            if (!currentUser) {
-                showToast("削除権限がありません", "error");
-                return;
-            }
-            try {
-                await deleteDoc(doc(db, "feedbacks", id));
-                showToast('ご意見を削除しました', 'info');
-            } catch (err) {
-                console.error("Error deleting feedback:", err);
-                showToast('削除に失敗しました', 'error');
-            }
-        };
-
-        // Convert Feedback to Task
-        window.convertFeedbackToTask = function(feedbackId, title, content) {
-            openTaskModal();
-            document.getElementById('taskModalTitle').textContent = 'お客さまの声からタスク作成';
-            document.getElementById('taskTitle').value = `[要望対応] ${title}`;
-            document.getElementById('taskDetail').value = `■ 元のご意見内容:\n${content}`;
-            document.getElementById('taskSourceFeedbackId').value = feedbackId;
-        };
-
-        // Update Task Status directly
-        window.updateTaskStatus = async function(id, newStatus) {
-            try {
-                await updateDoc(doc(db, "tasks", id), {
-                    status: newStatus,
-                    updatedAt: serverTimestamp()
-                });
-                showToast(`ステータスを「${newStatus}」に変更しました`, 'info');
-            } catch (err) {
-                console.error("Error updating status:", err);
-                showToast('更新に失敗しました', 'error');
-            }
-        };
-
-        // Edit Task Modal Trigger
-        window.editTask = function(id) {
-            const task = allTasks.find(t => t.id === id);
-            if (!task) return;
-
-            openTaskModal();
-            document.getElementById('taskModalTitle').textContent = 'タスクの編集';
-            document.getElementById('taskId').value = task.id;
-            document.getElementById('taskTitle').value = task.title || '';
-            document.getElementById('taskPriority').value = task.priority || '中';
-            document.getElementById('taskStatus').value = task.status || '未対応';
-            document.getElementById('taskAssignee').value = task.assignee || '';
-            document.getElementById('taskDetail').value = task.detail || '';
-            document.getElementById('taskSourceFeedbackId').value = task.sourceFeedbackId || '';
-        };
-
-        // Delete Task
-        window.deleteTask = async function(id) {
-            try {
-                await deleteDoc(doc(db, "tasks", id));
-                showToast('タスクを削除しました', 'info');
-            } catch (err) {
-                console.error("Error deleting task:", err);
-                showToast('削除に失敗しました', 'error');
-            }
-        };
-
-        // Tab Switcher
-        window.switchTab = function(tabName) {
-            document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
-            document.getElementById(`content-${tabName}`).classList.remove('hidden');
-
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('border-brand-600', 'text-brand-700');
-                btn.classList.add('border-transparent', 'text-slate-500');
-            });
-            const activeTab = document.getElementById(`tab-${tabName}`);
-            activeTab.classList.add('border-brand-600', 'text-brand-700');
-            activeTab.classList.remove('border-transparent', 'text-slate-500');
-        };
-
-        // Modal Controls
-        window.openFeedbackModal = function() {
-            document.getElementById('feedbackModal').classList.remove('hidden');
-        };
-        window.closeFeedbackModal = function() {
-            document.getElementById('feedbackModal').classList.add('hidden');
-        };
-
-        window.openTaskModal = function() {
-            document.getElementById('taskId').value = '';
-            document.getElementById('taskSourceFeedbackId').value = '';
-            document.getElementById('taskForm').reset();
-            document.getElementById('taskModalTitle').textContent = '新規タスクの作成';
-            document.getElementById('taskModal').classList.remove('hidden');
-        };
-        window.closeTaskModal = function() {
-            document.getElementById('taskModal').classList.add('hidden');
-        };
-
-        // Helper Utilities
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/&/g, '&amp;')
-                      .replace(/</g, '&lt;')
-                      .replace(/>/g, '&gt;')
-                      .replace(/"/g, '&quot;')
-                      .replace(/'/g, '&#039;');
-        }
-
-        function escapeJsString(str) {
-            if (!str) return '';
-            return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-active').textContent = active;
+            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('stat-rate-text').textContent = `${rate}%`;
+            document.getElementById('stat-rate-bar').style.width = `${rate}%`;
         }
     </script>
 </body>
