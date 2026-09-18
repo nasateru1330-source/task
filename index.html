@@ -94,11 +94,13 @@
                     </button>
                 </div>
 
-                <!-- Login Button (Hidden when logged in) -->
-                <button id="login-btn" class="hidden items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition shadow-sm hover:shadow active:scale-95">
-                    <i class="fa-brands fa-google text-red-400"></i>
-                    <span>Googleでログイン</span>
-                </button>
+                <!-- Login Buttons (Hidden when logged in) -->
+                <div id="login-btn-group" class="hidden flex items-center gap-2">
+                    <button id="login-btn" class="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition shadow-sm hover:shadow active:scale-95">
+                        <i class="fa-brands fa-google text-red-400"></i>
+                        <span>Googleでログイン</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -117,10 +119,16 @@
             <p class="text-slate-600 text-base sm:text-lg mb-8 leading-relaxed">
                 TaskFlow は Firebase と連携したマルチデバイス対応のタスク管理ツールです。Google アカウントでログインするだけで、どこからでもリアルタイムにアクセスできます。
             </p>
-            <button id="hero-login-btn" class="inline-flex items-center gap-3 px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
-                <i class="fa-brands fa-google text-lg"></i>
-                <span>Googleで今すぐ始める</span>
-            </button>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs sm:max-w-none">
+                <button id="hero-login-btn" class="inline-flex items-center justify-center gap-3 px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-2xl shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                    <i class="fa-brands fa-google text-lg"></i>
+                    <span>Googleでログイン</span>
+                </button>
+                <button id="hero-guest-btn" class="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-2xl transition-all">
+                    <i class="fa-solid fa-user-ghost text-slate-500"></i>
+                    <span>ゲストとして試す</span>
+                </button>
+            </div>
         </div>
 
         <!-- Dashboard & Task Management (Shown when logged in) -->
@@ -303,8 +311,8 @@
                 </div>
 
                 <div>
-                    <label for="edit-task-desc" class="block text-xs font-semibold text-slate-600 mb-1">詳細メモ</label>
-                    <textarea id="edit-task-desc" rows="3" 
+                    <label for="edit-task-desc" class="block text-xs font-semibold text-slate-600 mb-1">詳細メモ (任意)</label>
+                    <textarea id="edit-task-desc" rows="3" placeholder="詳細やメモを入力..." 
                         class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition resize-none"></textarea>
                 </div>
 
@@ -334,11 +342,50 @@
                         class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition">
                 </div>
 
-                <div class="flex justify-end gap-3 pt-3">
-                    <button type="button" id="cancel-edit-btn" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">キャンセル</button>
-                    <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-sm transition">変更を保存</button>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" id="cancel-edit-btn" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                        キャンセル
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl shadow-sm transition">
+                        保存する
+                    </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Firebase Configuration Error Modal -->
+    <div id="auth-error-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100">
+            <div class="flex items-center gap-3 text-amber-600 mb-4">
+                <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-gear text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Firebaseの設定が必要です</h3>
+                    <p class="text-xs text-slate-500">Googleログインを有効にしてください</p>
+                </div>
+            </div>
+            
+            <div class="space-y-3 text-xs sm:text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200/80 mb-5 leading-relaxed">
+                <p class="font-semibold text-slate-800">Firebaseコンソールで以下の手順を行なってください：</p>
+                <ol class="list-decimal list-inside space-y-1.5 pl-1">
+                    <li><a href="https://console.firebase.google.com/" target="_blank" class="text-brand-600 hover:underline font-medium">Firebase Console</a> にアクセス</li>
+                    <li>プロジェクト <code class="bg-slate-200 px-1 py-0.5 rounded text-slate-800">task-18d57</code> を選択</li>
+                    <li><b>Authentication</b> ＞ <b>ログイン方法 (Sign-in method)</b> を開く</li>
+                    <li>プロバイダ <b>Google</b> を選択して「有効にする」をオン</li>
+                    <li>サポートメールを設定して <b>保存</b> をクリック</li>
+                </ol>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-end gap-2">
+                <button id="close-auth-modal-btn" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                    閉じる
+                </button>
+                <button id="guest-fallback-btn" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-user-ghost"></i> ゲストモードで試す
+                </button>
+            </div>
         </div>
     </div>
 
@@ -349,6 +396,7 @@
             getAuth, 
             GoogleAuthProvider, 
             signInWithPopup, 
+            signInAnonymously,
             signOut, 
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
@@ -388,6 +436,7 @@
         let searchQuery = '';
         let currentSort = 'created-desc';
 
+        // Toast message display
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -412,12 +461,10 @@
 
             container.appendChild(toast);
 
-            // Animate in
             requestAnimationFrame(() => {
                 toast.classList.remove('translate-y-2', 'opacity-0');
             });
 
-            // Auto dismiss
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
@@ -435,11 +482,26 @@
             }[match]));
         }
 
+        // Auth Error Modal Helpers
+        function showAuthErrorModal() {
+            document.getElementById('auth-error-modal')?.classList.remove('hidden');
+        }
+
+        function hideAuthErrorModal() {
+            document.getElementById('auth-error-modal')?.classList.add('hidden');
+        }
+
+        document.getElementById('close-auth-modal-btn')?.addEventListener('click', hideAuthErrorModal);
+        document.getElementById('guest-fallback-btn')?.addEventListener('click', () => {
+            hideAuthErrorModal();
+            handleGuestLogin();
+        });
+
         // Auth State Listener
         onAuthStateChanged(auth, (user) => {
             const authLoading = document.getElementById('auth-loading');
             const userInfo = document.getElementById('user-info');
-            const loginBtn = document.getElementById('login-btn');
+            const loginBtnGroup = document.getElementById('login-btn-group');
             const loggedOutHero = document.getElementById('logged-out-hero');
             const loggedInApp = document.getElementById('logged-in-app');
 
@@ -448,12 +510,16 @@
             if (user) {
                 currentUser = user;
                 // Update UI for Logged-In
-                document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/150';
-                document.getElementById('user-name').textContent = user.displayName || 'ユーザー';
+                const isAnonymous = user.isAnonymous;
+                const avatarUrl = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+                const displayName = user.displayName || (isAnonymous ? 'ゲストユーザー' : 'ユーザー');
+
+                document.getElementById('user-avatar').src = avatarUrl;
+                document.getElementById('user-name').textContent = displayName;
                 
                 userInfo.classList.remove('hidden');
                 userInfo.classList.add('flex');
-                loginBtn.classList.add('hidden');
+                loginBtnGroup.classList.add('hidden');
 
                 loggedOutHero.classList.add('hidden');
                 loggedOutHero.classList.remove('flex');
@@ -467,8 +533,7 @@
 
                 userInfo.classList.add('hidden');
                 userInfo.classList.remove('flex');
-                loginBtn.classList.remove('hidden');
-                loginBtn.classList.add('flex');
+                loginBtnGroup.classList.remove('hidden');
 
                 loggedOutHero.classList.remove('hidden');
                 loggedOutHero.classList.add('flex');
@@ -485,7 +550,24 @@
                 showToast('ログインしました', 'success');
             } catch (error) {
                 console.error("Login Error:", error);
-                showToast('ログインに失敗しました: ' + error.message, 'error');
+                if (error.code === 'auth/configuration-not-found' || error.message?.includes('CONFIGURATION_NOT_FOUND')) {
+                    showAuthErrorModal();
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    showToast('このドメインはFirebaseで許可されていません。「承認済みドメイン」に追加してください。', 'error');
+                    showAuthErrorModal();
+                } else {
+                    showToast('ログインに失敗しました: ' + (error.message || 'エラーが発生しました'), 'error');
+                }
+            }
+        }
+
+        async function handleGuestLogin() {
+            try {
+                await signInAnonymously(auth);
+                showToast('ゲストとしてログインしました', 'success');
+            } catch (error) {
+                console.error("Guest Login Error:", error);
+                showToast('ゲストログインに失敗しました', 'error');
             }
         }
 
@@ -499,9 +581,10 @@
             }
         }
 
-        document.getElementById('login-btn').addEventListener('click', handleLogin);
-        document.getElementById('hero-login-btn').addEventListener('click', handleLogin);
-        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        document.getElementById('login-btn')?.addEventListener('click', handleLogin);
+        document.getElementById('hero-login-btn')?.addEventListener('click', handleLogin);
+        document.getElementById('hero-guest-btn')?.addEventListener('click', handleGuestLogin);
+        document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
 
         // Attach Firestore Realtime Task Listener
         function attachTasksListener(userId) {
@@ -633,14 +716,14 @@
         };
 
         function closeEditModal() {
-            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-modal')?.classList.add('hidden');
         }
 
-        document.getElementById('close-modal-btn').addEventListener('click', closeEditModal);
-        document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
+        document.getElementById('close-modal-btn')?.addEventListener('click', closeEditModal);
+        document.getElementById('cancel-edit-btn')?.addEventListener('click', closeEditModal);
 
         // Save Task Edits
-        document.getElementById('edit-task-form').addEventListener('submit', async (e) => {
+        document.getElementById('edit-task-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentUser) return;
 
@@ -689,12 +772,12 @@
             });
         });
 
-        document.getElementById('search-input').addEventListener('input', (e) => {
+        document.getElementById('search-input')?.addEventListener('input', (e) => {
             searchQuery = e.target.value.toLowerCase().trim();
             renderTasks();
         });
 
-        document.getElementById('sort-select').addEventListener('change', (e) => {
+        document.getElementById('sort-select')?.addEventListener('change', (e) => {
             currentSort = e.target.value;
             renderTasks();
         });
